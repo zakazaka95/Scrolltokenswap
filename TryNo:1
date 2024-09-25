@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+// Import ERC20 interface and Uniswap interfaces
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+
+contract TokenSwap {
+    ISwapRouter public immutable swapRouter;
+    address public immutable WETH;
+
+    // Constructor to set the Uniswap Router and WETH address
+    constructor() {
+        swapRouter = ISwapRouter(0x17AFD0263D6909Ba1F9a8EAC697f76532365Fb95); // Uniswap Router Address
+        WETH = 0x5300000000000000000000000000000000000004; // WETH Address
+    }
+
+    // Function to swap tokens
+    function swapTokens(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        uint24 poolFee, // Change here to uint24
+        uint256 deadline
+    ) external {
+        // Step a: Transfer input tokens from sender to this contract
+        TransferHelper.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
+
+        // Step b: Approve the Uniswap router to spend the input tokens
+        TransferHelper.safeApprove(tokenIn, address(swapRouter), amountIn);
+
+        // Step c: Define the exact input swapping path
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            fee: poolFee, // This is now of type uint24
+            recipient: msg.sender,
+            deadline: deadline,
+            amountIn: amountIn,
+            amountOutMinimum: amountOutMin,
+            sqrtPriceLimitX96: 0 // No price limit
+        });
+
+        // Step d: Call exactInputSingle() to execute the swap
+        uint256 amountOut = swapRouter.exactInputSingle(params);
+    }
+}
